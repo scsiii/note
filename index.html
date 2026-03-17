@@ -7,162 +7,375 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NoteRead">
-<meta name="description" content="Master music sight-reading. One note at a time.">
+<meta name="description" content="Master music sight-reading. Identify notes on the staff, scan sheet music with AI, and auto-calibrate to your instrument.">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>NoteRead</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;overscroll-behavior:none}
-  body{font-family:'Nunito',sans-serif;background:#1a1a2e;color:#e8eaf0;min-height:100vh;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  .app{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative}
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
 
-  .screen{display:none;flex-direction:column;min-height:100vh;animation:fadeIn .3s ease}
-  .screen.active{display:flex}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  button {
+    all: unset;
+    box-sizing: border-box;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-  /* safe area padding for notched phones */
-  .home-bg{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;padding:max(40px,env(safe-area-inset-top)) 24px 40px}
+  :root {
+    --bg-app:    #1a1a2e;
+    --bg-mid:    #16213e;
+    --bg-deep:   #0f3460;
+    --bg-game:   #0d1117;
+    --accent:    #f4d03f;
+    --accent2:   #f39c12;
+    --teal:      #52e5ca;
+    --teal-dim:  #7df0e0;
+    --purple:    #a29bfe;
+    --green:     #2ecc71;
+    --txt-1:     #f0f4ff;
+    --txt-2:     #c8d0e0;
+    --txt-3:     #8899aa;
+    --txt-4:     #556677;
+    --border:    rgba(255,255,255,0.16);
+  }
 
-  .logo{text-align:center;margin-bottom:32px}
-  .logo-icon{font-size:64px;display:block;margin-bottom:8px}
-  .logo h1{font-size:32px;font-weight:900;background:linear-gradient(90deg,#f4d03f,#f39c12);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px}
-  .logo p{color:#a0aec0;font-size:14px;margin-top:4px}
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg-app); color: var(--txt-2); min-height: 100vh; overflow-x: hidden; }
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  .screen { display: none; flex-direction: column; min-height: 100vh; animation: fadeIn .3s ease; }
+  .screen.active { display: flex; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
-  .menu-grid{display:grid;gap:16px;margin-bottom:24px}
-  .menu-card{background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:16px;user-select:none}
-  .menu-card:active{transform:scale(0.97);background:rgba(255,255,255,0.14)}
-  .menu-card .icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
-  .menu-card .info h3{font-size:16px;font-weight:700;color:#f0f4ff;margin-bottom:2px}
-  .menu-card .info p{font-size:12px;color:#94a3b8}
-  .icon-game{background:linear-gradient(135deg,#f4d03f,#f39c12)}
-  .icon-scan{background:linear-gradient(135deg,#52e5ca,#17a589)}
-  .icon-library{background:linear-gradient(135deg,#a29bfe,#6c5ce7)}
+  /* ── BUTTONS ── */
+  .back-btn, .pause-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 1.5px solid rgba(255,255,255,0.35) !important;
+    color: #f0f4ff !important; font-size: 20px; font-weight: 800;
+    flex-shrink: 0; transition: background .15s; line-height: 1;
+  }
+  .back-btn:hover, .pause-btn:hover { background: rgba(255,255,255,0.28); }
 
-  .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px}
-  .stat-box{background:rgba(255,255,255,0.07);border-radius:16px;padding:16px;text-align:center}
-  .stat-box .val{font-size:24px;font-weight:800;color:#f4d03f}
-  .stat-box .lbl{font-size:11px;color:#94a3b8;margin-top:2px}
+  .btn-danger {
+    flex: 1; padding: 14px 0; border-radius: 50px;
+    background: rgba(255,80,80,0.18) !important;
+    border: 2px solid rgba(255,100,100,0.55) !important;
+    color: #ffaaaa !important; font-size: 16px; font-weight: 800;
+    transition: background .15s;
+  }
+  .btn-danger:hover { background: rgba(255,80,80,0.3) !important; }
 
-  .game-screen{background:#0d1117;position:relative;overflow:hidden;flex:1;display:flex;flex-direction:column}
-  .game-header{padding:max(16px,env(safe-area-inset-top)) 16px 16px;display:flex;justify-content:space-between;align-items:center;z-index:10}
-  .timer-pill{background:rgba(255,255,255,0.12);border-radius:50px;padding:8px 16px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:#f0f4ff}
-  .timer-dot{width:10px;height:10px;border-radius:50%;background:#f4d03f;animation:pulse 1s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-  .score-pill{background:rgba(244,208,63,0.15);border:1px solid rgba(244,208,63,0.35);border-radius:50px;padding:8px 16px;font-weight:700;color:#f4d03f}
-  .pause-btn{width:40px;height:40px;background:rgba(255,255,255,0.12);border-radius:50%;border:none;color:#f0f4ff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .btn-keep {
+    flex: 1; padding: 14px 0; border-radius: 50px;
+    background: linear-gradient(135deg, #f4d03f, #f39c12) !important;
+    border: none !important; color: #1a1a2e !important;
+    font-size: 16px; font-weight: 900; transition: transform .15s;
+  }
+  .btn-keep:hover { transform: scale(1.04); }
 
-  .staff-area{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:16px}
-  .note-label{text-align:center;margin-top:16px;font-size:40px;font-weight:900;letter-spacing:2px;min-height:56px}
-  .note-label.correct{color:#2ecc71;animation:bounce .3s ease}
-  .note-label.wrong{color:#ff6b6b;animation:shake .3s ease}
-  @keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
-  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #1a1a2e !important; border: none !important;
+    border-radius: 50px; padding: 14px 28px;
+    font-size: 16px; font-weight: 800; transition: transform .15s;
+  }
+  .btn-primary:hover { transform: scale(1.05); }
 
-  .answer-buttons{padding:12px 16px max(16px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-  .note-btn{background:rgba(255,255,255,0.1);border:1.5px solid rgba(255,255,255,0.2);border-radius:16px;padding:16px 8px;font-size:20px;font-weight:800;color:#f0f4ff;cursor:pointer;transition:all .15s;font-family:'Nunito',sans-serif;user-select:none}
-  .note-btn:active{transform:scale(0.95);background:rgba(244,208,63,0.18);border-color:#f4d03f;color:#f4d03f}
-  .note-btn.correct-ans{background:rgba(46,204,113,0.25);border-color:#2ecc71!important;color:#2ecc71!important}
-  .note-btn.wrong-ans{background:rgba(255,107,107,0.25);border-color:#ff6b6b!important;color:#ff6b6b!important}
+  .btn-sec {
+    background: rgba(255,255,255,0.13) !important;
+    color: #f0f4ff !important;
+    border: 1.5px solid rgba(255,255,255,0.25) !important;
+    border-radius: 50px; padding: 14px 20px;
+    font-size: 16px; font-weight: 700; transition: background .15s;
+  }
+  .btn-sec:hover { background: rgba(255,255,255,0.22) !important; }
 
-  .progress-bar{height:4px;background:rgba(255,255,255,0.1);overflow:hidden}
-  .progress-fill{height:100%;background:linear-gradient(90deg,#f4d03f,#f39c12);transition:width .3s ease}
+  .note-btn {
+    background: rgba(255,255,255,0.12) !important;
+    border: 1.5px solid rgba(255,255,255,0.22) !important;
+    border-radius: 16px; padding: 16px 8px;
+    font-size: 20px; font-weight: 800; color: #f0f4ff !important;
+    width: 100%; transition: all .15s;
+  }
+  .note-btn:hover { background: rgba(244,208,63,0.2) !important; border-color: #f4d03f !important; color: #f4d03f !important; transform: scale(1.05); }
+  .note-btn.correct-ans { background: rgba(46,204,113,0.25) !important; border-color: #2ecc71 !important; color: #2ecc71 !important; }
+  .note-btn.wrong-ans   { background: rgba(255,107,107,0.25) !important; border-color: #ff6b6b !important; color: #ff6b6b !important; }
 
-  .complete-screen{background:linear-gradient(135deg,#1a1a2e,#16213e);align-items:center;justify-content:center;padding:max(40px,env(safe-area-inset-top)) 24px max(40px,env(safe-area-inset-bottom));text-align:center;flex:1}
-  .complete-banner{background:linear-gradient(90deg,#f4d03f,#f39c12);color:#1a1a2e;font-size:26px;font-weight:900;padding:12px 32px;border-radius:50px;margin-bottom:24px;letter-spacing:1px}
-  .stars-row{display:flex;justify-content:center;gap:12px;margin-bottom:28px}
-  .star{font-size:48px;opacity:.3;transition:all .5s}
-  .star.earned{opacity:1;animation:starPop .4s ease forwards}
-  @keyframes starPop{0%{transform:scale(0) rotate(-30deg)}60%{transform:scale(1.3) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
-  .result-card{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:24px;padding:20px;width:100%;margin-bottom:24px}
-  .result-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)}
-  .result-row:last-child{border-bottom:none}
-  .result-row .rlabel{color:#94a3b8;font-size:14px}
-  .result-row .rval{font-weight:800;font-size:18px;color:#f4d03f}
-  .action-btns{display:flex;gap:16px}
-  .btn-primary{background:linear-gradient(135deg,#f4d03f,#f39c12);color:#1a1a2e;border:none;border-radius:50px;padding:14px 28px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;transition:transform .15s;user-select:none}
-  .btn-primary:active{transform:scale(0.96)}
-  .btn-sec{background:rgba(255,255,255,0.1);color:#f0f4ff;border:1px solid rgba(255,255,255,0.2);border-radius:50px;padding:14px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s;user-select:none}
-  .btn-sec:active{background:rgba(255,255,255,0.16)}
+  .clef-btn {
+    flex: 1; padding: 10px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.16) !important;
+    border-radius: 14px; color: #8899aa !important;
+    font-size: 13px; font-weight: 700; transition: all .2s;
+  }
+  .clef-btn.active { background: rgba(244,208,63,0.15); border-color: rgba(244,208,63,0.4) !important; color: #f4d03f !important; }
 
-  .sub-screen{background:#0d1117;flex:1;display:flex;flex-direction:column}
-  .sub-header{padding:max(20px,env(safe-area-inset-top)) 20px 16px;display:flex;align-items:center;gap:12px;background:#0d1117;position:sticky;top:0;z-index:10}
-  .back-btn{width:40px;height:40px;background:rgba(255,255,255,0.1);border-radius:50%;border:none;color:#f0f4ff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .sub-header h2{font-size:20px;font-weight:800;color:#f0f4ff}
+  .mode-btn {
+    flex: 1; padding: 10px; border-radius: 50px;
+    background: transparent; border: none !important;
+    color: #8899aa !important; font-size: 14px; font-weight: 700; transition: all .2s;
+  }
+  .mode-btn.active { background: rgba(244,208,63,0.2); color: #f4d03f !important; }
 
-  .scan-body{flex:1;padding:0 20px max(80px,env(safe-area-inset-bottom));overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding-top:16px}
-  .scan-zone{background:rgba(255,255,255,0.05);border:2px dashed rgba(255,255,255,0.22);border-radius:24px;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
-  .scan-zone:active{border-color:rgba(82,229,202,0.5);background:rgba(82,229,202,0.05)}
-  .scan-zone .sz-icon{font-size:48px}
-  .scan-zone .sz-text{font-size:16px;font-weight:700;color:#cbd5e1}
-  .scan-zone .sz-sub{font-size:13px;color:#64748b}
-  .scan-preview{width:100%;height:100%;object-fit:contain;border-radius:20px}
+  .fab {
+    position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); right: 24px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), #17a589);
+    border: none !important; color: #0d1117 !important;
+    font-size: 28px; font-weight: 900;
+    box-shadow: 0 8px 24px rgba(82,229,202,.4);
+    z-index: 100; transition: transform .15s;
+  }
+  .fab:hover { transform: scale(1.1); }
 
-  .detected-notes{background:rgba(82,229,202,0.08);border:1px solid rgba(82,229,202,0.25);border-radius:20px;padding:20px}
-  .dn-title{font-size:14px;font-weight:700;color:#52e5ca;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
-  .notes-chips{display:flex;flex-wrap:wrap;gap:8px}
-  .note-chip{background:rgba(82,229,202,0.15);border:1px solid rgba(82,229,202,0.35);border-radius:50px;padding:6px 16px;font-size:15px;font-weight:700;color:#7df0e0}
+  /* ── CALIBRATION OVERLAY ── */
+  .calib-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+    z-index: 300; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .calib-overlay.visible { display: flex; }
+  .calib-card {
+    background: #0d1928; border: 1.5px solid rgba(82,229,202,0.3);
+    border-radius: 28px; padding: 36px 28px;
+    width: 100%; max-width: 340px; text-align: center;
+  }
+  .calib-card h3 { font-size: 22px; font-weight: 900; color: #f0f4ff; margin-bottom: 8px; }
+  .calib-card p  { font-size: 14px; color: #c8d0e0; margin-bottom: 28px; line-height: 1.7; }
+  .calib-note-display {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: rgba(82,229,202,0.08);
+    border: 2.5px solid rgba(82,229,202,0.3);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 0 auto 24px; transition: all .3s;
+  }
+  .calib-note-display.listening { border-color: var(--teal); background: rgba(82,229,202,0.15); animation: listenPulse 1.2s ease-in-out infinite; }
+  .calib-note-display.got-it    { border-color: #2ecc71; background: rgba(46,204,113,0.18); }
+  @keyframes listenPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(82,229,202,0.4); } 50% { box-shadow: 0 0 0 14px rgba(82,229,202,0); } }
+  .calib-note-name { font-size: 32px; font-weight: 900; color: var(--teal); line-height: 1; }
+  .calib-freq { font-size: 12px; color: var(--txt-3); margin-top: 4px; }
+  .calib-status { font-size: 13px; color: var(--txt-3); margin-bottom: 20px; min-height: 20px; }
+  .calib-status.active  { color: var(--teal); }
+  .calib-status.success { color: #2ecc71; }
+  .pitch-bar-wrap { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-bottom: 24px; }
+  .pitch-bar { height: 100%; background: linear-gradient(90deg, var(--teal), #17a589); border-radius: 3px; width: 0%; transition: width .1s; }
+  .calib-actions { display: flex; gap: 12px; }
+  .btn-skip {
+    flex: 1; padding: 13px 0; border-radius: 50px;
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: #c8d0e0 !important; font-size: 15px; font-weight: 700; transition: background .15s;
+  }
+  .btn-skip:hover { background: rgba(255,255,255,0.14) !important; }
+  .btn-use {
+    flex: 1; padding: 13px 0; border-radius: 50px;
+    background: linear-gradient(135deg, var(--teal), #17a589) !important;
+    border: none !important; color: #0d1117 !important;
+    font-size: 15px; font-weight: 800;
+    opacity: 0.4; transition: opacity .2s, transform .15s; pointer-events: none;
+  }
+  .btn-use.ready { opacity: 1; pointer-events: auto; }
+  .btn-use.ready:hover { transform: scale(1.04); }
 
-  .ai-thinking{display:flex;align-items:center;gap:10px;padding:20px;color:#94a3b8;font-size:14px}
-  .ai-dot{width:8px;height:8px;border-radius:50%;background:#52e5ca}
-  .ai-dot:nth-child(1){animation:aiPulse 1.2s .0s infinite}
-  .ai-dot:nth-child(2){animation:aiPulse 1.2s .2s infinite}
-  .ai-dot:nth-child(3){animation:aiPulse 1.2s .4s infinite}
-  @keyframes aiPulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+  .calib-badge {
+    background: rgba(82,229,202,0.12); border: 1px solid rgba(82,229,202,0.3);
+    border-radius: 50px; padding: 5px 10px;
+    font-size: 12px; font-weight: 700; color: var(--teal);
+    white-space: nowrap; cursor: pointer; transition: all .2s;
+  }
+  .calib-badge:hover { background: rgba(82,229,202,0.22); }
 
-  .lib-body{flex:1;padding:0 20px max(90px,env(safe-area-inset-bottom));overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-top:8px}
-  .lib-card{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:16px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .2s;user-select:none}
-  .lib-card:active{background:rgba(255,255,255,0.12);transform:translateX(4px)}
-  .lib-thumb{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;background:rgba(162,155,254,0.15)}
-  .lib-info h3{font-size:15px;font-weight:700;color:#f0f4ff;margin-bottom:4px}
-  .lib-info p{font-size:12px;color:#94a3b8}
-  .lib-badge{margin-left:auto;background:rgba(244,208,63,0.15);border:1px solid rgba(244,208,63,0.3);border-radius:50px;padding:4px 12px;font-size:12px;font-weight:700;color:#f4d03f;white-space:nowrap}
-  .lib-empty{text-align:center;padding:60px 20px;color:#64748b}
-  .lib-empty .le-icon{font-size:48px;margin-bottom:12px}
-  .lib-empty p{font-size:14px;line-height:1.6;color:#64748b}
+  /* ── SOUND TOGGLE ── */
+  .sound-toggle {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 16px; padding: 14px 16px;
+    cursor: pointer; transition: all .2s; user-select: none;
+  }
+  .sound-toggle:hover { background: rgba(255,255,255,0.11); }
+  .sound-toggle .st-label { flex: 1; font-size: 15px; font-weight: 700; color: var(--txt-1); }
+  .sound-toggle .st-sub   { font-size: 12px; color: var(--txt-3); margin-top: 1px; }
+  .sound-toggle .st-icon  { font-size: 22px; }
+  .toggle-track {
+    width: 46px; height: 26px; border-radius: 13px;
+    background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    position: relative; transition: all .25s; flex-shrink: 0;
+  }
+  .toggle-track.on { background: rgba(82,229,202,0.35); border-color: rgba(82,229,202,0.6); }
+  .toggle-thumb {
+    width: 20px; height: 20px; border-radius: 50%; background: #8899aa;
+    position: absolute; top: 1px; left: 1px;
+    transition: all .25s; box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+  .toggle-track.on .toggle-thumb { background: #52e5ca; left: 21px; }
+  .sound-indicator { font-size: 18px; opacity: 0.6; flex-shrink: 0; cursor: pointer; transition: opacity .2s; padding: 4px; }
+  .sound-indicator:hover { opacity: 1; }
+  .sound-indicator.on { opacity: 1; }
 
-  .fab{position:fixed;bottom:max(24px,env(safe-area-inset-bottom));right:24px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#52e5ca,#17a589);border:none;color:#0d1117;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(82,229,202,0.4);z-index:100;user-select:none}
-  .fab:active{transform:scale(0.93)}
+  /* ── QUIT OVERLAY ── */
+  .quit-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+    z-index: 200; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .quit-overlay.visible { display: flex; }
+  .quit-card {
+    background: #1e2d45; border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 24px; padding: 32px 24px;
+    width: 100%; max-width: 320px; text-align: center;
+  }
+  .quit-card h3 { font-size: 22px; font-weight: 900; color: #f0f4ff; margin-bottom: 10px; }
+  .quit-card p  { font-size: 15px; color: #c8d0e0; margin-bottom: 28px; line-height: 1.6; }
+  .quit-btns { display: flex; gap: 12px; }
 
-  .select-screen{background:linear-gradient(135deg,#1a1a2e,#0f3460);flex:1;overflow-y:auto}
-  .sel-body{padding:0 20px max(40px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
-  .level-card{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);border-radius:20px;padding:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:16px;user-select:none}
-  .level-card:active{background:rgba(255,255,255,0.12);transform:scale(0.98)}
-  .level-card.featured{border-color:rgba(244,208,63,0.4);background:rgba(244,208,63,0.07)}
-  .lv-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-  .lv-treble{background:rgba(244,208,63,0.18)}
-  .lv-bass{background:rgba(82,229,202,0.15)}
-  .lv-grand{background:rgba(162,155,254,0.15)}
-  .lv-custom{background:rgba(253,121,168,0.15)}
-  .lv-info h3{font-size:15px;font-weight:700;color:#f0f4ff;margin-bottom:2px}
-  .lv-info p{font-size:12px;color:#94a3b8}
-  .lv-stars{margin-left:auto;font-size:14px}
+  /* ── HOME ── */
+  .home-bg { background: linear-gradient(135deg, var(--bg-app), var(--bg-mid) 50%, var(--bg-deep)); min-height: 100vh; padding: max(40px, env(safe-area-inset-top)) 24px 40px; }
+  .logo { text-align: center; margin-bottom: 32px; }
+  .logo-icon { font-size: 64px; display: block; margin-bottom: 8px; }
+  .logo h1 { font-size: 32px; font-weight: 900; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo p { color: var(--txt-3); font-size: 14px; margin-top: 4px; }
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .stat-box { background: rgba(255,255,255,0.07); border-radius: 16px; padding: 16px; text-align: center; }
+  .stat-box .val { font-size: 24px; font-weight: 800; color: var(--accent); }
+  .stat-box .lbl { font-size: 11px; color: var(--txt-3); margin-top: 2px; }
+  .menu-grid { display: grid; gap: 14px; }
+  .menu-card { background: rgba(255,255,255,0.09); border: 1px solid var(--border); border-radius: 20px; padding: 20px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 16px; }
+  .menu-card:hover { background: rgba(255,255,255,0.15); border-color: rgba(244,208,63,0.4); transform: translateY(-2px); }
+  .menu-card .icon { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+  .menu-card .info h3 { font-size: 16px; font-weight: 700; color: var(--txt-1); margin-bottom: 2px; }
+  .menu-card .info p  { font-size: 12px; color: var(--txt-3); }
+  .icon-game    { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+  .icon-scan    { background: linear-gradient(135deg, var(--teal), #17a589); }
+  .icon-library { background: linear-gradient(135deg, var(--purple), #6c5ce7); }
+  .section-title { font-size: 12px; font-weight: 700; color: var(--txt-3); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px; }
 
-  .staff-svg{width:100%;max-height:200px}
+  /* ── SHARED HEADER ── */
+  .sub-header { padding: max(20px, env(safe-area-inset-top)) 20px 16px; display: flex; align-items: center; gap: 12px; background: var(--bg-game); position: sticky; top: 0; z-index: 10; }
+  .sub-header h2 { font-size: 20px; font-weight: 800; color: var(--txt-1); }
 
-  .mode-toggle{display:flex;background:rgba(255,255,255,0.07);border-radius:50px;padding:4px;gap:4px}
-  .mode-btn{flex:1;padding:10px;border-radius:50px;border:none;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;color:#94a3b8;background:transparent;user-select:none}
-  .mode-btn.active{background:rgba(244,208,63,0.2);color:#f4d03f}
+  /* ── SELECT ── */
+  .select-screen { background: linear-gradient(135deg, var(--bg-app), var(--bg-deep)); flex: 1; overflow-y: auto; }
+  .sel-body { padding: 0 20px max(40px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
+  .clef-mode { display: flex; gap: 8px; margin-bottom: 16px; padding: 0 20px; }
+  .level-card { background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 20px; padding: 18px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 16px; }
+  .level-card:hover { background: rgba(255,255,255,0.12); transform: translateY(-2px); }
+  .level-card.featured { border-color: rgba(244,208,63,0.4); background: rgba(244,208,63,0.07); }
+  .lv-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .lv-treble{background:rgba(244,208,63,.18);} .lv-bass{background:rgba(82,229,202,.15);}
+  .lv-grand{background:rgba(162,155,254,.15);} .lv-custom{background:rgba(253,121,168,.15);}
+  .lv-info h3 { font-size: 15px; font-weight: 700; color: var(--txt-1); margin-bottom: 2px; }
+  .lv-info p  { font-size: 12px; color: var(--txt-3); }
+  .lv-stars { margin-left: auto; font-size: 14px; color: var(--txt-4); }
+  .lv-stars.lit { color: inherit; }
 
-  .clef-mode{display:flex;gap:8px;margin-bottom:16px;padding:0 20px}
-  .clef-btn{flex:1;padding:10px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);border-radius:14px;color:#94a3b8;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .2s;user-select:none}
-  .clef-btn.active{background:rgba(244,208,63,0.15);border-color:rgba(244,208,63,0.4);color:#f4d03f}
+  /* ── GAME ── */
+  .game-screen { background: var(--bg-game); flex: 1; display: flex; flex-direction: column; }
+  .progress-bar { height: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .3s ease; }
+  .game-header { padding: max(14px, env(safe-area-inset-top)) 16px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .timer-pill { background: rgba(255,255,255,0.14); border-radius: 50px; padding: 8px 14px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: var(--txt-1); }
+  .timer-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  .score-pill { background: rgba(244,208,63,0.15); border: 1px solid rgba(244,208,63,0.35); border-radius: 50px; padding: 8px 14px; font-weight: 700; color: var(--accent); font-size: 15px; }
+  .staff-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px; }
+  .staff-svg { width: 100%; max-height: 200px; }
+  .note-label { text-align: center; margin-top: 16px; font-size: 40px; font-weight: 900; letter-spacing: 2px; min-height: 56px; color: var(--txt-1); }
+  .note-label.correct { color: var(--green); animation: bounce .3s ease; }
+  .note-label.wrong   { color: #ff6b6b;      animation: shake .3s ease; }
+  @keyframes bounce { 0%,100%{transform:scale(1);} 50%{transform:scale(1.3);} }
+  @keyframes shake  { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);} }
+  .answer-buttons { padding: 12px 16px max(20px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
 
-  .ai-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(82,229,202,0.1);border:1px solid rgba(82,229,202,0.25);border-radius:50px;padding:5px 12px;font-size:12px;color:#52e5ca;font-weight:700}
-  .ai-badge::before{content:'';width:8px;height:8px;border-radius:50%;background:#52e5ca;display:inline-block}
+  /* ── COMPLETE ── */
+  .complete-screen { background: linear-gradient(135deg, var(--bg-app), var(--bg-mid)); align-items: center; justify-content: center; padding: max(40px, env(safe-area-inset-top)) 24px max(40px, env(safe-area-inset-bottom)); text-align: center; flex: 1; }
+  .complete-banner { background: linear-gradient(90deg, var(--accent), var(--accent2)); color: var(--bg-app); font-size: 26px; font-weight: 900; padding: 12px 32px; border-radius: 50px; margin-bottom: 24px; }
+  .stars-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 28px; }
+  .star { font-size: 48px; opacity: .25; transition: all .5s; }
+  .star.earned { opacity: 1; animation: starPop .4s ease forwards; }
+  @keyframes starPop { 0%{transform:scale(0) rotate(-30deg);} 60%{transform:scale(1.3) rotate(5deg);} 100%{transform:scale(1) rotate(0);} }
+  .result-card { background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 24px; padding: 20px; width: 100%; margin-bottom: 24px; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .rlabel { color: var(--txt-3); font-size: 14px; }
+  .result-row .rval   { font-weight: 800; font-size: 18px; color: var(--accent); }
+  .action-btns { display: flex; gap: 16px; }
 
-  input[type=file]{display:none}
+  /* ── SUB SCREENS ── */
+  .sub-screen { background: var(--bg-game); flex: 1; display: flex; flex-direction: column; }
+  .scan-body { flex: 1; padding: 16px 20px max(80px, env(safe-area-inset-bottom)); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .scan-zone { background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.22); border-radius: 24px; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: all .2s; position: relative; overflow: hidden; }
+  .scan-zone:hover { border-color: rgba(82,229,202,0.5); background: rgba(82,229,202,0.05); }
+  .scan-zone .sz-icon { font-size: 48px; }
+  .scan-zone .sz-text { font-size: 16px; font-weight: 700; color: var(--txt-2); }
+  .scan-zone .sz-sub  { font-size: 13px; color: var(--txt-3); }
+  .scan-preview { width: 100%; height: 100%; object-fit: contain; border-radius: 20px; }
+  .detected-notes { background: rgba(82,229,202,0.08); border: 1px solid rgba(82,229,202,0.25); border-radius: 20px; padding: 20px; }
+  .dn-title { font-size: 13px; font-weight: 700; color: var(--teal); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .notes-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .note-chip { background: rgba(82,229,202,0.15); border: 1px solid rgba(82,229,202,0.3); border-radius: 50px; padding: 6px 16px; font-size: 15px; font-weight: 700; color: var(--teal-dim); }
+  .ai-thinking { display: flex; align-items: center; gap: 10px; padding: 16px; color: var(--txt-3); font-size: 14px; }
+  .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+  .ai-dot:nth-child(1){animation:aiP 1.2s 0s infinite;} .ai-dot:nth-child(2){animation:aiP 1.2s .2s infinite;} .ai-dot:nth-child(3){animation:aiP 1.2s .4s infinite;}
+  @keyframes aiP { 0%,100%{opacity:.2;transform:scale(.8);} 50%{opacity:1;transform:scale(1.2);} }
+  .mode-toggle { display: flex; background: rgba(255,255,255,0.07); border-radius: 50px; padding: 4px; gap: 4px; }
+  .ai-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(82,229,202,0.1); border: 1px solid rgba(82,229,202,0.25); border-radius: 50px; padding: 5px 12px; font-size: 12px; color: var(--teal); font-weight: 700; }
+  .ai-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--teal); display: inline-block; }
+  .lib-body { flex: 1; padding: 8px 20px max(90px, env(safe-area-inset-bottom)); overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .lib-card { background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 20px; padding: 16px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: all .2s; }
+  .lib-card:hover { background: rgba(255,255,255,0.12); border-color: rgba(162,155,254,0.4); transform: translateX(4px); }
+  .lib-thumb { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; background: rgba(162,155,254,0.15); }
+  .lib-info h3 { font-size: 15px; font-weight: 700; color: var(--txt-1); margin-bottom: 4px; }
+  .lib-info p  { font-size: 12px; color: var(--txt-3); }
+  .lib-badge { margin-left: auto; background: rgba(244,208,63,0.15); border: 1px solid rgba(244,208,63,0.3); border-radius: 50px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .lib-empty { text-align: center; padding: 60px 20px; }
+  .lib-empty .le-icon { font-size: 48px; margin-bottom: 12px; }
+  .lib-empty p { font-size: 14px; line-height: 1.7; color: var(--txt-4); }
+  input[type=file] { display: none; }
 
-  /* install banner */
-  .install-banner{background:rgba(244,208,63,0.1);border:1px solid rgba(244,208,63,0.25);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:16px}
-  .install-banner p{font-size:13px;color:#cbd5e1;flex:1;line-height:1.4}
-  .install-banner strong{color:#f4d03f}
-  .install-btn{background:linear-gradient(135deg,#f4d03f,#f39c12);color:#1a1a2e;border:none;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;white-space:nowrap}
+  /* PWA install banner */
+  .install-banner { background: rgba(244,208,63,0.1); border: 1px solid rgba(244,208,63,0.25); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .install-banner p { font-size: 13px; color: var(--txt-2); flex: 1; line-height: 1.4; }
+  .install-banner strong { color: var(--accent); }
+  .install-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #1a1a2e; border: none; border-radius: 50px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: 'Nunito', sans-serif; white-space: nowrap; }
 </style>
 </head>
 <body>
 <div class="app">
+
+<!-- CALIBRATION OVERLAY -->
+<div class="calib-overlay" id="calib-overlay">
+  <div class="calib-card">
+    <h3>Tune to your instrument</h3>
+    <p id="calib-desc">Play the note shown and hold it steady. NoteRead will detect your instrument's tuning and calibrate automatically.</p>
+    <div class="calib-note-display" id="calib-display">
+      <div class="calib-note-name" id="calib-detected-note">?</div>
+      <div class="calib-freq" id="calib-freq"></div>
+    </div>
+    <div class="calib-status" id="calib-status">Waiting for microphone…</div>
+    <div class="pitch-bar-wrap"><div class="pitch-bar" id="pitch-bar"></div></div>
+    <div class="calib-actions">
+      <button class="btn-skip" onclick="skipCalib()">Skip — use A=440Hz</button>
+      <button class="btn-use" id="btn-use-calib" onclick="confirmCalib()">Use this tuning ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUIT OVERLAY -->
+<div class="quit-overlay" id="quit-overlay">
+  <div class="quit-card">
+    <h3>Quit game?</h3>
+    <p>Your current progress will be lost.</p>
+    <div class="quit-btns">
+      <button class="btn-danger" onclick="confirmQuit()">Quit</button>
+      <button class="btn-keep" onclick="dismissQuit()">Keep playing</button>
+    </div>
+  </div>
+</div>
 
 <!-- HOME -->
 <div class="screen active" id="screen-home">
@@ -184,60 +397,30 @@
       <div class="stat-box"><div class="val" id="stat-notes">0</div><div class="lbl">Notes Read</div></div>
     </div>
     <div class="menu-grid">
-      <div class="menu-card" onclick="showScreen('screen-select')">
-        <div class="icon icon-game">🎮</div>
-        <div class="info"><h3>Play Game</h3><p>Race against the clock</p></div>
-      </div>
-      <div class="menu-card" onclick="showScreen('screen-scan')">
-        <div class="icon icon-scan">📷</div>
-        <div class="info"><h3>Scan Sheet Music</h3><p>Photo → practice set</p></div>
-      </div>
-      <div class="menu-card" onclick="showScreen('screen-library')">
-        <div class="icon icon-library">📚</div>
-        <div class="info"><h3>My Library</h3><p>Saved practice sets</p></div>
-      </div>
+      <div class="menu-card" onclick="showScreen('screen-select')"><div class="icon icon-game">🎮</div><div class="info"><h3>Play Game</h3><p>Race against the clock</p></div></div>
+      <div class="menu-card" onclick="showScreen('screen-scan')"><div class="icon icon-scan">📷</div><div class="info"><h3>Scan Sheet Music</h3><p>Photo → practice set</p></div></div>
+      <div class="menu-card" onclick="showScreen('screen-library')"><div class="icon icon-library">📚</div><div class="info"><h3>My Library</h3><p>Saved practice sets</p></div></div>
+    </div>
+    <div class="section-title">Settings</div>
+    <div class="sound-toggle" onclick="toggleSound()">
+      <span class="st-icon" id="sound-icon">🔊</span>
+      <div><div class="st-label">Sound Feedback</div><div class="st-sub" id="sound-sub">Tone plays on correct answer</div></div>
+      <div class="toggle-track" id="toggle-track"><div class="toggle-thumb"></div></div>
     </div>
   </div>
 </div>
 
-<!-- SELECT LEVEL -->
+<!-- SELECT -->
 <div class="screen" id="screen-select">
   <div class="select-screen">
-    <div class="sub-header">
-      <button class="back-btn" onclick="showScreen('screen-home')">←</button>
-      <h2>Choose Level</h2>
-    </div>
-    <div class="clef-mode" id="clef-selector">
-      <button class="clef-btn active" onclick="setClef('treble',this)">Treble</button>
-      <button class="clef-btn" onclick="setClef('bass',this)">Bass</button>
-      <button class="clef-btn" onclick="setClef('grand',this)">Grand</button>
-    </div>
+    <div class="sub-header"><button class="back-btn" onclick="showScreen('screen-home')">←</button><h2>Choose Level</h2></div>
+    <div class="clef-mode"><button class="clef-btn active" onclick="setClef(this)">Treble</button><button class="clef-btn" onclick="setClef(this)">Bass</button><button class="clef-btn" onclick="setClef(this)">Grand</button></div>
     <div class="sel-body">
-      <div class="level-card featured" onclick="startGame('landmark')">
-        <div class="lv-icon lv-treble">⭐</div>
-        <div class="lv-info"><h3>Landmark Notes</h3><p>C, G, F, Middle C</p></div>
-        <div class="lv-stars">⭐⭐⭐</div>
-      </div>
-      <div class="level-card" onclick="startGame('lines')">
-        <div class="lv-icon lv-treble">🎼</div>
-        <div class="lv-info"><h3>Line Notes</h3><p>E, G, B, D, F</p></div>
-        <div class="lv-stars">⭐⭐⭐</div>
-      </div>
-      <div class="level-card" onclick="startGame('spaces')">
-        <div class="lv-icon lv-bass">🎵</div>
-        <div class="lv-info"><h3>Space Notes</h3><p>F, A, C, E</p></div>
-        <div class="lv-stars">⭐⭐⭐</div>
-      </div>
-      <div class="level-card" onclick="startGame('all')">
-        <div class="lv-icon lv-grand">🎹</div>
-        <div class="lv-info"><h3>Full Staff</h3><p>All treble notes</p></div>
-        <div class="lv-stars">⭐⭐⭐</div>
-      </div>
-      <div class="level-card" onclick="startGame('custom')">
-        <div class="lv-icon lv-custom">✨</div>
-        <div class="lv-info"><h3>Custom Set</h3><p>From scanned sheets</p></div>
-        <div class="lv-stars" style="color:#334155">☆☆☆</div>
-      </div>
+      <div class="level-card featured" onclick="startGame('landmark')"><div class="lv-icon lv-treble">⭐</div><div class="lv-info"><h3>Landmark Notes</h3><p>C, G, F, Middle C</p></div><div class="lv-stars lit">⭐⭐⭐</div></div>
+      <div class="level-card" onclick="startGame('lines')"><div class="lv-icon lv-treble">🎼</div><div class="lv-info"><h3>Line Notes</h3><p>E, G, B, D, F</p></div><div class="lv-stars lit">⭐⭐⭐</div></div>
+      <div class="level-card" onclick="startGame('spaces')"><div class="lv-icon lv-bass">🎵</div><div class="lv-info"><h3>Space Notes</h3><p>F, A, C, E</p></div><div class="lv-stars lit">⭐⭐⭐</div></div>
+      <div class="level-card" onclick="startGame('all')"><div class="lv-icon lv-grand">🎹</div><div class="lv-info"><h3>Full Staff</h3><p>All treble notes</p></div><div class="lv-stars lit">⭐⭐⭐</div></div>
+      <div class="level-card" onclick="startGame('custom')"><div class="lv-icon lv-custom">✨</div><div class="lv-info"><h3>Custom Set</h3><p>From scanned sheets</p></div><div class="lv-stars">☆☆☆</div></div>
     </div>
   </div>
 </div>
@@ -247,9 +430,12 @@
   <div class="game-screen">
     <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
     <div class="game-header">
+      <button class="back-btn" onclick="promptQuit()">←</button>
       <div class="timer-pill"><div class="timer-dot"></div><span id="timer-display">0.00</span></div>
-      <button class="pause-btn" onclick="togglePause()">⏸</button>
+      <button class="pause-btn" id="pause-btn" onclick="togglePause()">⏸</button>
       <div class="score-pill">✓ <span id="correct-count">0</span>/<span id="total-count">10</span></div>
+      <span class="calib-badge" id="calib-badge" onclick="openCalib()" title="Re-calibrate tuning">🎼 A=440</span>
+      <span class="sound-indicator" id="game-sound-icon" onclick="toggleSound()">🔊</span>
     </div>
     <div class="staff-area">
       <svg class="staff-svg" id="game-staff" viewBox="0 0 340 220" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -263,59 +449,35 @@
 <div class="screen" id="screen-complete">
   <div class="complete-screen">
     <div class="complete-banner">COMPLETE! 🎉</div>
-    <div class="stars-row">
-      <span class="star" id="star1">⭐</span>
-      <span class="star" id="star2">⭐</span>
-      <span class="star" id="star3">⭐</span>
-    </div>
+    <div class="stars-row"><span class="star" id="star1">⭐</span><span class="star" id="star2">⭐</span><span class="star" id="star3">⭐</span></div>
     <div class="result-card">
       <div class="result-row"><span class="rlabel">Time</span><span class="rval" id="res-time">-</span></div>
       <div class="result-row"><span class="rlabel">Correct</span><span class="rval" id="res-correct">-</span></div>
       <div class="result-row"><span class="rlabel">Accuracy</span><span class="rval" id="res-acc">-</span></div>
       <div class="result-row"><span class="rlabel">Best Time</span><span class="rval" id="res-best">-</span></div>
     </div>
-    <div class="action-btns">
-      <button class="btn-sec" onclick="showScreen('screen-home')">🏠 Home</button>
-      <button class="btn-primary" onclick="replayGame()">↺ Again</button>
-    </div>
+    <div class="action-btns"><button class="btn-sec" onclick="showScreen('screen-home')">🏠 Home</button><button class="btn-primary" onclick="startGame(currentLevel)">↺ Again</button></div>
   </div>
 </div>
 
 <!-- SCAN -->
 <div class="screen" id="screen-scan">
   <div class="sub-screen">
-    <div class="sub-header">
-      <button class="back-btn" onclick="showScreen('screen-home')">←</button>
-      <h2>Scan Sheet Music</h2>
-    </div>
+    <div class="sub-header"><button class="back-btn" onclick="showScreen('screen-home')">←</button><h2>Scan Sheet Music</h2></div>
     <div class="scan-body">
       <div class="ai-badge">AI-Powered Note Detection</div>
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="mode-photo" onclick="setMode('photo')">📷 Take Photo</button>
-        <button class="mode-btn" id="mode-upload" onclick="setMode('upload')">📁 Upload</button>
-      </div>
-      <div class="scan-zone" id="scan-zone" onclick="triggerScan()">
+      <div class="mode-toggle"><button class="mode-btn active" id="mode-photo" onclick="setMode('photo')">📷 Take Photo</button><button class="mode-btn" id="mode-upload" onclick="setMode('upload')">📁 Upload</button></div>
+      <div class="scan-zone" onclick="triggerScan()">
         <div class="sz-icon" id="scan-icon">📷</div>
         <div class="sz-text" id="scan-text">Tap to scan sheet music</div>
         <div class="sz-sub" id="scan-sub">Camera or photo library</div>
         <img id="scan-preview-img" class="scan-preview" style="display:none"/>
       </div>
       <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
-      <div id="ai-status" style="display:none">
-        <div class="ai-thinking">
-          <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
-          <span>Analyzing sheet music with AI...</span>
-        </div>
-      </div>
+      <div id="ai-status" style="display:none"><div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analyzing sheet music with AI...</span></div></div>
       <div id="detected-panel" style="display:none">
-        <div class="detected-notes">
-          <div class="dn-title">📋 Detected Notes</div>
-          <div class="notes-chips" id="notes-chips"></div>
-        </div>
-        <div style="margin-top:16px;display:flex;gap:12px">
-          <button class="btn-sec" style="flex:1" onclick="resetScan()">↩ Rescan</button>
-          <button class="btn-primary" style="flex:1" onclick="saveToLibrary()">💾 Save</button>
-        </div>
+        <div class="detected-notes"><div class="dn-title">Detected Notes</div><div class="notes-chips" id="notes-chips"></div></div>
+        <div style="margin-top:16px;display:flex;gap:12px"><button class="btn-sec" style="flex:1" onclick="resetScan()">↩ Rescan</button><button class="btn-primary" style="flex:1" onclick="saveToLibrary()">💾 Save</button></div>
       </div>
     </div>
   </div>
@@ -324,196 +486,255 @@
 <!-- LIBRARY -->
 <div class="screen" id="screen-library">
   <div class="sub-screen">
-    <div class="sub-header">
-      <button class="back-btn" onclick="showScreen('screen-home')">←</button>
-      <h2>My Library</h2>
-    </div>
-    <div class="lib-body" id="library-body">
-      <div class="lib-empty">
-        <div class="le-icon">📚</div>
-        <p>No practice sets yet.<br>Scan sheet music to create<br>custom practice sets!</p>
-      </div>
-    </div>
+    <div class="sub-header"><button class="back-btn" onclick="showScreen('screen-home')">←</button><h2>My Library</h2></div>
+    <div class="lib-body" id="library-body"><div class="lib-empty"><div class="le-icon">📚</div><p>No practice sets yet.<br>Scan sheet music to create custom practice sets!</p></div></div>
     <button class="fab" onclick="showScreen('screen-scan')">+</button>
   </div>
 </div>
 
 </div>
-
 <script>
-const ALL_NOTES={treble:{'C4':{line:185,ledger:true},'D4':{line:175},'E4':{line:165},'F4':{line:155},'G4':{line:145},'A4':{line:135},'B4':{line:125},'C5':{line:115},'D5':{line:105},'E5':{line:95},'F5':{line:85},'G5':{line:75}}};
-const LEVEL_SETS={landmark:['C4','E5','G4','C5','B4'],lines:['E4','G4','B4','D5','F5'],spaces:['F4','A4','C5','E5'],all:['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5'],custom:[]};
-let currentLevel='all',currentNoteIdx=0,elapsed=0,paused=false,correctAnswers=0,totalAnswered=0,noteQueue=[],scannedNotes=[],scanMode='photo';
-let library=JSON.parse(localStorage.getItem('noteread_library')||'[]');
-let stats=JSON.parse(localStorage.getItem('noteread_stats')||'{"streak":0,"bestScore":0,"totalNotes":0}');
-let deferredPrompt=null;
+// ─── PWA install ───
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; document.getElementById('install-banner').style.display = 'flex'; });
+window.addEventListener('appinstalled', () => { document.getElementById('install-banner').style.display = 'none'; deferredPrompt = null; });
+async function installPWA(){ if(!deferredPrompt) return; deferredPrompt.prompt(); const {outcome} = await deferredPrompt.userChoice; deferredPrompt = null; document.getElementById('install-banner').style.display = 'none'; }
 
+// ─── AUDIO ENGINE ───
+let audioCtx = null;
+function getCtx(){ if(!audioCtx) audioCtx = new(window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); return audioCtx; }
+function playTone(freqs, type='sine'){ freqs.forEach(([freq,delay,dur,vol=0.25]) => { const ctx=getCtx(),osc=ctx.createOscillator(),gain=ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.type=type; osc.frequency.setValueAtTime(freq,ctx.currentTime+delay); gain.gain.setValueAtTime(0,ctx.currentTime+delay); gain.gain.linearRampToValueAtTime(vol,ctx.currentTime+delay+0.02); gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+dur); osc.start(ctx.currentTime+delay); osc.stop(ctx.currentTime+delay+dur+0.05); }); }
+function playCorrect(){ playTone([[659.25,0,0.12],[783.99,0.1,0.18]]); }
+function playWrong(){ playTone([[246.94,0,0.09],[233.08,0.08,0.14]],'sawtooth'); }
+function playComplete(){ playTone([[261.63,0,0.35],[329.63,0.12,0.35],[392,0.24,0.35],[523.25,0.36,0.45]]); }
+
+// ─── PITCH DETECTION ───
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function freqToMidi(f){ return 12*Math.log2(f/440)+69; }
+function midiToNoteName(m){ const s=Math.round(m)%12; const o=Math.floor(Math.round(m)/12)-1; return NOTE_NAMES[((s%12)+12)%12]+o; }
+function noteNameToMidi(name){ const m=name.match(/([A-G]#?)(\d)/); if(!m) return 69; return (parseInt(m[2])+1)*12+NOTE_NAMES.indexOf(m[1]); }
+function rms(buf){ let s=0; for(let i=0;i<buf.length;i++) s+=buf[i]*buf[i]; return Math.sqrt(s/buf.length); }
+function detectPitch(buf, sr){
+  const SIZE=buf.length, MAX=Math.floor(SIZE/2);
+  const corr=new Float32Array(MAX);
+  for(let i=0;i<MAX;i++){ let s=0; for(let q=0;q<MAX;q++) s+=buf[q]*buf[q+i]; corr[i]=s; }
+  let best=-1, bestVal=0, foundFirst=false;
+  for(let i=1;i<MAX;i++){
+    if(!foundFirst && corr[i]<corr[0]*0.5) foundFirst=true;
+    if(foundFirst && corr[i]>bestVal){ bestVal=corr[i]; best=i; }
+    if(foundFirst && corr[i]<bestVal*0.97) break;
+  }
+  if(best===-1||bestVal<corr[0]*0.05) return -1;
+  let better=best;
+  if(best>0&&best<MAX-1){ const y1=corr[best-1],y2=corr[best],y3=corr[best+1]; better=best+(y3-y1)/(2*(2*y2-y1-y3)); }
+  return sr/better;
+}
+
+// ─── CALIBRATION ───
+let transposeOffset=0, calibStream=null, calibAnimFrame=null, calibCtx=null;
+let detectedCalibFreq=null, calibConfidenceCount=0, calibTargetNote='C4';
+const CONFIDENCE_NEEDED=8;
+
+function openCalib(targetNote){
+  if(targetNote) calibTargetNote=targetNote;
+  detectedCalibFreq=null; calibConfidenceCount=0;
+  document.getElementById('calib-detected-note').textContent='?';
+  document.getElementById('calib-freq').textContent='';
+  document.getElementById('calib-status').textContent='Requesting microphone access…';
+  document.getElementById('calib-status').className='calib-status';
+  document.getElementById('pitch-bar').style.width='0%';
+  document.getElementById('btn-use-calib').classList.remove('ready');
+  document.getElementById('calib-display').className='calib-note-display';
+  const noteLetter=calibTargetNote.replace(/\d/,'');
+  document.getElementById('calib-desc').textContent=`Play ${calibTargetNote} (${noteLetter}) on your instrument and hold it. NoteRead will detect the pitch and auto-calibrate.`;
+  document.getElementById('calib-overlay').classList.add('visible');
+  startCalibMic();
+}
+
+async function startCalibMic(){
+  try{
+    calibStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+    calibCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const src=calibCtx.createMediaStreamSource(calibStream);
+    const analyser=calibCtx.createAnalyser(); analyser.fftSize=4096;
+    src.connect(analyser);
+    const buf=new Float32Array(analyser.fftSize);
+    document.getElementById('calib-status').textContent='Listening… play '+calibTargetNote;
+    document.getElementById('calib-status').className='calib-status active';
+    document.getElementById('calib-display').className='calib-note-display listening';
+    let lastMidi=null;
+    function loop(){
+      calibAnimFrame=requestAnimationFrame(loop);
+      analyser.getFloatTimeDomainData(buf);
+      const amplitude=rms(buf);
+      if(amplitude<0.008){ calibConfidenceCount=0; return; }
+      const freq=detectPitch(buf,calibCtx.sampleRate);
+      if(freq<50||freq>2000) return;
+      const midi=freqToMidi(freq);
+      document.getElementById('calib-detected-note').textContent=midiToNoteName(midi);
+      document.getElementById('calib-freq').textContent=freq.toFixed(1)+' Hz';
+      if(lastMidi!==null && Math.abs(midi-lastMidi)<1.5) calibConfidenceCount++;
+      else calibConfidenceCount=0;
+      lastMidi=midi;
+      document.getElementById('pitch-bar').style.width=Math.min(100,(calibConfidenceCount/CONFIDENCE_NEEDED)*100)+'%';
+      if(calibConfidenceCount>=CONFIDENCE_NEEDED){
+        detectedCalibFreq=freq;
+        transposeOffset=Math.round(midi)-noteNameToMidi(calibTargetNote);
+        document.getElementById('calib-display').className='calib-note-display got-it';
+        document.getElementById('calib-status').textContent=`✓ Detected ${midiToNoteName(Math.round(midi))} — offset: ${transposeOffset>=0?'+':''}${transposeOffset} semitones`;
+        document.getElementById('calib-status').className='calib-status success';
+        document.getElementById('btn-use-calib').classList.add('ready');
+        updateCalibBadge(); stopCalibMic();
+      }
+    }
+    loop();
+  } catch(e){ document.getElementById('calib-status').textContent='Mic access denied — using concert pitch.'; }
+}
+
+function stopCalibMic(){ if(calibAnimFrame){cancelAnimationFrame(calibAnimFrame);calibAnimFrame=null;} if(calibStream){calibStream.getTracks().forEach(t=>t.stop());calibStream=null;} if(calibCtx){calibCtx.close();calibCtx=null;} }
+function skipCalib(){ transposeOffset=0; stopCalibMic(); document.getElementById('calib-overlay').classList.remove('visible'); updateCalibBadge(); if(!gameRunning) beginGame(); }
+function confirmCalib(){ stopCalibMic(); document.getElementById('calib-overlay').classList.remove('visible'); updateCalibBadge(); if(!gameRunning) beginGame(); }
+function updateCalibBadge(){ const b=document.getElementById('calib-badge'); b.textContent=transposeOffset===0?'🎼 A=440':`🎼 ${transposeOffset>=0?'+':''}${transposeOffset}st`; }
+
+// ─── SOUND ───
+let soundOn=localStorage.getItem('nr_sound')!=='off';
+function updateSoundUI(){ const on=soundOn; document.getElementById('toggle-track').classList.toggle('on',on); document.getElementById('sound-icon').textContent=on?'🔊':'🔇'; document.getElementById('game-sound-icon').textContent=on?'🔊':'🔇'; document.getElementById('game-sound-icon').classList.toggle('on',on); document.getElementById('sound-sub').textContent=on?'Tone plays on correct answer':'Sound is off'; }
+function toggleSound(){ soundOn=!soundOn; localStorage.setItem('nr_sound',soundOn?'on':'off'); updateSoundUI(); if(soundOn) playCorrect(); }
+updateSoundUI();
+
+// ─── STATS ───
+let stats=JSON.parse(localStorage.getItem('nr_stats')||'{"streak":0,"bestScore":0,"totalNotes":0}');
 document.getElementById('stat-streak').textContent=stats.streak;
 document.getElementById('stat-score').textContent=stats.bestScore;
 document.getElementById('stat-notes').textContent=stats.totalNotes;
 
-window.addEventListener('beforeinstallprompt',(e)=>{
-  e.preventDefault();deferredPrompt=e;
-  document.getElementById('install-banner').style.display='flex';
-});
-window.addEventListener('appinstalled',()=>{
-  document.getElementById('install-banner').style.display='none';deferredPrompt=null;
-});
+// ─── NAVIGATION ───
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='screen-library') renderLibrary(); }
+function setClef(btn){ document.querySelectorAll('.clef-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+function setMode(m){ scanMode=m; document.getElementById('mode-photo').classList.toggle('active',m==='photo'); document.getElementById('mode-upload').classList.toggle('active',m==='upload'); }
+function promptQuit(){ paused=true; document.getElementById('pause-btn').textContent='▶'; document.getElementById('quit-overlay').classList.add('visible'); }
+function dismissQuit(){ document.getElementById('quit-overlay').classList.remove('visible'); paused=false; document.getElementById('pause-btn').textContent='⏸'; }
+function confirmQuit(){ document.getElementById('quit-overlay').classList.remove('visible'); if(timerInterval) clearInterval(timerInterval); gameRunning=false; showScreen('screen-home'); }
 
-async function installPWA(){
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt();
-  const{outcome}=await deferredPrompt.userChoice;
-  deferredPrompt=null;
-  document.getElementById('install-banner').style.display='none';
-}
-
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='screen-library')renderLibrary();}
-function setClef(c,btn){document.querySelectorAll('.clef-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-function setMode(m){scanMode=m;document.getElementById('mode-photo').classList.toggle('active',m==='photo');document.getElementById('mode-upload').classList.toggle('active',m==='upload');}
-
-function triggerScan(){
-  const fi=document.getElementById('file-input');
-  fi.setAttribute('capture', scanMode==='photo'?'environment':'');
-  fi.click();
-}
-
-function handleFileSelect(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=(ev)=>{
-    const img=document.getElementById('scan-preview-img');
-    img.src=ev.target.result;img.style.display='block';
-    ['scan-icon','scan-text','scan-sub'].forEach(id=>document.getElementById(id).style.display='none');
-    analyzeSheetMusic(ev.target.result);
-  };
-  reader.readAsDataURL(file);
-}
-
-async function analyzeSheetMusic(imageData){
-  document.getElementById('ai-status').style.display='flex';
-  document.getElementById('detected-panel').style.display='none';
-  try{
-    const base64=imageData.split(',')[1];
-    const mediaType=imageData.split(';')[0].split(':')[1];
-    const response=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:base64}},{type:'text',text:'This is sheet music. List every note visible on the staff as a JSON array using scientific pitch notation (e.g. ["C4","D4","E5"]). Middle C = C4. Return ONLY the JSON array, no other text.'}]}]})});
-    const data=await response.json();
-    const text=data.content.map(i=>i.text||'').join('');
-    const clean=text.replace(/```json|```/g,'').trim();
-    let notes;try{notes=JSON.parse(clean);}catch(e){notes=null;}
-    scannedNotes=(notes&&Array.isArray(notes)&&notes.length>0)?notes.filter(n=>typeof n==='string'):['C4','E4','G4','C5','D5'];
-  }catch(err){scannedNotes=['C4','E4','G4','B4','C5','D5','F4','A4'];}
-  document.getElementById('ai-status').style.display='none';
-  document.getElementById('notes-chips').innerHTML=scannedNotes.map(n=>`<div class="note-chip">${n}</div>`).join('');
-  document.getElementById('detected-panel').style.display='block';
-}
-
-function resetScan(){
-  document.getElementById('scan-preview-img').style.display='none';
-  ['scan-icon','scan-text','scan-sub'].forEach(id=>document.getElementById(id).style.display='block');
-  document.getElementById('detected-panel').style.display='none';
-  document.getElementById('file-input').value='';scannedNotes=[];
-}
-
-function saveToLibrary(){
-  if(!scannedNotes.length)return;
-  const entry={id:Date.now(),name:'Sheet Music '+new Date().toLocaleDateString(),notes:scannedNotes,noteCount:scannedNotes.length,date:new Date().toISOString(),bestTime:null};
-  library.push(entry);localStorage.setItem('noteread_library',JSON.stringify(library));
-  alert('Saved to library!');resetScan();showScreen('screen-library');
-}
-
-function renderLibrary(){
-  library=JSON.parse(localStorage.getItem('noteread_library')||'[]');
-  const body=document.getElementById('library-body');
-  if(!library.length){body.innerHTML='<div class="lib-empty"><div class="le-icon">📚</div><p>No practice sets yet.<br>Scan sheet music to create<br>custom practice sets!</p></div>';return;}
-  body.innerHTML=library.map(e=>`<div class="lib-card" onclick="practiceLibraryEntry(${e.id})"><div class="lib-thumb">🎼</div><div class="lib-info"><h3>${e.name}</h3><p>${e.noteCount} notes · ${new Date(e.date).toLocaleDateString()}</p></div><div class="lib-badge">${e.bestTime?e.bestTime+'s':'New'}</div></div>`).join('');
-}
-
-function practiceLibraryEntry(id){const e=library.find(x=>x.id===id);if(!e)return;LEVEL_SETS.custom=e.notes;startGame('custom');}
+// ─── GAME ───
+const ALL_NOTES={treble:{'C4':{line:185,ledger:true},'D4':{line:175},'E4':{line:165},'F4':{line:155},'G4':{line:145},'A4':{line:135},'B4':{line:125},'C5':{line:115},'D5':{line:105},'E5':{line:95},'F5':{line:85},'G5':{line:75}}};
+const LEVEL_SETS={landmark:['C4','E5','G4','C5','B4'],lines:['E4','G4','B4','D5','F5'],spaces:['F4','A4','C5','E5'],all:['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5'],custom:[]};
+let currentLevel='all',currentNoteIdx=0,elapsed=0,paused=false,correctAnswers=0,noteQueue=[],scannedNotes=[],scanMode='photo',gameRunning=false;
+let library=JSON.parse(localStorage.getItem('nr_lib')||'[]');
 
 function startGame(level){
   currentLevel=level;
-  let notes=[...(LEVEL_SETS[level]||LEVEL_SETS.all)];
-  if(!notes.length)notes=LEVEL_SETS.all;
-  noteQueue=[];for(let i=0;i<10;i++)noteQueue.push(notes[i%notes.length]);
-  noteQueue=shuffle(noteQueue);
-  currentNoteIdx=0;correctAnswers=0;totalAnswered=0;elapsed=0;paused=false;
+  let notes=[...(LEVEL_SETS[level]||LEVEL_SETS.all)]; if(!notes.length) notes=LEVEL_SETS.all;
+  noteQueue=[]; for(let i=0;i<10;i++) noteQueue.push(notes[i%notes.length]); noteQueue=shuffle(noteQueue);
+  currentNoteIdx=0; correctAnswers=0; elapsed=0; paused=false; gameRunning=false;
   document.getElementById('correct-count').textContent='0';
   document.getElementById('total-count').textContent=noteQueue.length;
   document.getElementById('timer-display').textContent='0.00';
   document.getElementById('progress-fill').style.width='0%';
   document.getElementById('note-feedback').textContent='';
   document.getElementById('note-feedback').className='note-label';
-  showScreen('screen-game');renderCurrentNote();startTimer();
+  document.getElementById('pause-btn').textContent='⏸';
+  calibTargetNote=noteQueue[0];
+  openCalib(calibTargetNote);
 }
 
-function replayGame(){showScreen('screen-select');setTimeout(()=>startGame(currentLevel),100);}
-function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function renderCurrentNote(){if(currentNoteIdx>=noteQueue.length){endGame();return;}drawStaff(noteQueue[currentNoteIdx]);renderAnswerButtons(noteQueue[currentNoteIdx]);}
+function beginGame(){ gameRunning=true; showScreen('screen-game'); renderCurrentNote(); startTimer(); }
+const shuffle=arr=>{ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+function renderCurrentNote(){ if(currentNoteIdx>=noteQueue.length){ endGame(); return; } drawStaff(noteQueue[currentNoteIdx]); renderAnswerButtons(noteQueue[currentNoteIdx]); }
 
-function drawStaff(noteName){
-  const svg=document.getElementById('game-staff');
-  const nd=ALL_NOTES.treble[noteName];
-  const noteY=nd?nd.line:130;
-  let s=`<rect width="340" height="220" fill="#0d1117" rx="16"/>
-    <line x1="60" y1="90" x2="320" y2="90" stroke="#2d3748" stroke-width="1.5"/>
-    <line x1="60" y1="105" x2="320" y2="105" stroke="#2d3748" stroke-width="1.5"/>
-    <line x1="60" y1="120" x2="320" y2="120" stroke="#2d3748" stroke-width="1.5"/>
-    <line x1="60" y1="135" x2="320" y2="135" stroke="#2d3748" stroke-width="1.5"/>
-    <line x1="60" y1="150" x2="320" y2="150" stroke="#2d3748" stroke-width="1.5"/>
-    <line x1="60" y1="90" x2="60" y2="150" stroke="#4a5568" stroke-width="2"/>
-    <text x="68" y="160" font-size="90" fill="#4a5568" font-family="serif">𝄞</text>`;
-  if(nd&&nd.ledger)s+=`<line x1="155" y1="${noteY}" x2="205" y2="${noteY}" stroke="#64748b" stroke-width="1.5"/>`;
-  s+=`<ellipse cx="180" cy="${noteY}" rx="14" ry="10" fill="#f4d03f" transform="rotate(-15,180,${noteY})"/>
-    <line x1="193" y1="${noteY}" x2="193" y2="${noteY-55}" stroke="#f4d03f" stroke-width="2.5"/>`;
+function drawStaff(n){
+  const svg=document.getElementById('game-staff'),nd=ALL_NOTES.treble[n],y=nd?nd.line:130;
+  let s=`<rect width="340" height="220" fill="#0d1117" rx="16"/>`;
+  [90,105,120,135,150].forEach(ly=>s+=`<line x1="60" y1="${ly}" x2="320" y2="${ly}" stroke="#2d3748" stroke-width="1.5"/>`);
+  s+=`<line x1="60" y1="90" x2="60" y2="150" stroke="#4a5568" stroke-width="2"/><text x="68" y="160" font-size="90" fill="#4a5568" font-family="serif">𝄞</text>`;
+  if(currentNoteIdx===0 && transposeOffset!==0){
+    const tgt=midiToNoteName(noteNameToMidi(n)+transposeOffset);
+    s+=`<text x="180" y="72" text-anchor="middle" font-size="13" fill="#52e5ca" font-family="sans-serif">Play: ${tgt}</text>`;
+  }
+  if(nd&&nd.ledger) s+=`<line x1="155" y1="${y}" x2="205" y2="${y}" stroke="#64748b" stroke-width="1.5"/>`;
+  s+=`<ellipse cx="180" cy="${y}" rx="14" ry="10" fill="#f4d03f" transform="rotate(-15,180,${y})"/><line x1="193" y1="${y}" x2="193" y2="${y-55}" stroke="#f4d03f" stroke-width="2.5"/>`;
   svg.innerHTML=s;
 }
 
 function renderAnswerButtons(correctNote){
-  const noteLetters=['C','D','E','F','G','A','B'];
-  const correctLetter=correctNote.match(/([A-G])/)[1];
-  let options=[correctLetter];
-  const others=noteLetters.filter(n=>n!==correctLetter);
-  while(options.length<7){const p=others[Math.floor(Math.random()*others.length)];if(!options.includes(p))options.push(p);}
-  options=shuffle(options);
-  document.getElementById('answer-btns').innerHTML=options.map(n=>`<button class="note-btn" onclick="checkAnswer('${n}','${correctLetter}',this)">${n}</button>`).join('');
+  const letters=['C','D','E','F','G','A','B'],cl=correctNote.match(/([A-G])/)[1];
+  let opts=[cl]; const others=letters.filter(n=>n!==cl);
+  while(opts.length<7){ const p=others[Math.floor(Math.random()*others.length)]; if(!opts.includes(p)) opts.push(p); }
+  opts=shuffle(opts);
+  document.getElementById('answer-btns').innerHTML=opts.map(n=>`<button class="note-btn" onclick="checkAnswer('${n}','${cl}',this)">${n}</button>`).join('');
 }
 
 function checkAnswer(chosen,correct,btn){
   document.querySelectorAll('.note-btn').forEach(b=>b.disabled=true);
   const fb=document.getElementById('note-feedback');
-  totalAnswered++;
-  if(chosen===correct){correctAnswers++;btn.classList.add('correct-ans');fb.textContent='✓ '+correct;fb.className='note-label correct';stats.totalNotes++;}
-  else{btn.classList.add('wrong-ans');document.querySelectorAll('.note-btn').forEach(b=>{if(b.textContent===correct)b.classList.add('correct-ans');});fb.textContent='✗ '+chosen;fb.className='note-label wrong';}
+  if(chosen===correct){ correctAnswers++; btn.classList.add('correct-ans'); fb.textContent='✓ '+correct; fb.className='note-label correct'; stats.totalNotes++; if(soundOn) playCorrect(); }
+  else{ btn.classList.add('wrong-ans'); document.querySelectorAll('.note-btn').forEach(b=>{ if(b.textContent===correct) b.classList.add('correct-ans'); }); fb.textContent='✗ '+chosen; fb.className='note-label wrong'; if(soundOn) playWrong(); }
   document.getElementById('correct-count').textContent=correctAnswers;
   document.getElementById('progress-fill').style.width=((currentNoteIdx+1)/noteQueue.length*100)+'%';
-  setTimeout(()=>{currentNoteIdx++;fb.textContent='';fb.className='note-label';renderCurrentNote();},800);
+  setTimeout(()=>{ currentNoteIdx++; fb.textContent=''; fb.className='note-label'; renderCurrentNote(); },800);
 }
 
 let timerInterval=null;
-function startTimer(){if(timerInterval)clearInterval(timerInterval);elapsed=0;timerInterval=setInterval(()=>{if(!paused){elapsed+=0.05;document.getElementById('timer-display').textContent=elapsed.toFixed(2);}},50);}
-function togglePause(){paused=!paused;document.querySelector('.pause-btn').textContent=paused?'▶':'⏸';}
+function startTimer(){ if(timerInterval) clearInterval(timerInterval); elapsed=0; timerInterval=setInterval(()=>{ if(!paused){ elapsed+=0.05; document.getElementById('timer-display').textContent=elapsed.toFixed(2); } },50); }
+function togglePause(){ paused=!paused; document.getElementById('pause-btn').textContent=paused?'▶':'⏸'; }
 
 function endGame(){
-  if(timerInterval)clearInterval(timerInterval);
-  const acc=Math.round((correctAnswers/noteQueue.length)*100);
-  const stars=acc>=90?3:acc>=60?2:1;
-  if(!stats.bestScore||elapsed<stats.bestScore)stats.bestScore=Math.round(elapsed*100)/100;
-  localStorage.setItem('noteread_stats',JSON.stringify(stats));
+  if(timerInterval) clearInterval(timerInterval); gameRunning=false;
+  const acc=Math.round(correctAnswers/noteQueue.length*100),stars=acc>=90?3:acc>=60?2:1;
+  if(!stats.bestScore||elapsed<stats.bestScore) stats.bestScore=Math.round(elapsed*100)/100;
+  localStorage.setItem('nr_stats',JSON.stringify(stats));
   document.getElementById('stat-score').textContent=stats.bestScore;
   document.getElementById('stat-notes').textContent=stats.totalNotes;
   document.getElementById('res-time').textContent=elapsed.toFixed(2)+'s';
   document.getElementById('res-correct').textContent=correctAnswers+'/'+noteQueue.length;
   document.getElementById('res-acc').textContent=acc+'%';
   document.getElementById('res-best').textContent=stats.bestScore+'s';
-  [1,2,3].forEach(i=>{document.getElementById('star'+i).className='star'+(i<=stars?' earned':'');});
+  [1,2,3].forEach(i=>document.getElementById('star'+i).className='star'+(i<=stars?' earned':''));
+  if(soundOn) setTimeout(playComplete,200);
   showScreen('screen-complete');
 }
+
+// ─── SCAN / LIBRARY ───
+function triggerScan(){ document.getElementById('file-input').click(); }
+function handleFileSelect(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{ const img=document.getElementById('scan-preview-img'); img.src=ev.target.result; img.style.display='block'; ['scan-icon','scan-text','scan-sub'].forEach(id=>document.getElementById(id).style.display='none'); analyzeSheetMusic(ev.target.result); };
+  reader.readAsDataURL(file);
+}
+async function analyzeSheetMusic(imageData){
+  document.getElementById('ai-status').style.display='flex'; document.getElementById('detected-panel').style.display='none';
+  try{
+    const base64=imageData.split(',')[1],mediaType=imageData.split(';')[0].split(':')[1];
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:base64}},{type:'text',text:'Sheet music image. Return ONLY a JSON array of notes in scientific pitch notation e.g. ["C4","D4","E5"]. Middle C = C4. No other text.'}]}]})});
+    const data=await res.json(); const text=data.content.map(i=>i.text||'').join('');
+    let notes; try{ notes=JSON.parse(text.replace(/```json|```/g,'').trim()); }catch(e){ notes=null; }
+    scannedNotes=(notes&&Array.isArray(notes)&&notes.length)?notes.filter(n=>typeof n==='string'):['C4','E4','G4','C5','D5'];
+  }catch(e){ scannedNotes=['C4','E4','G4','B4','C5','D5','F4','A4']; }
+  document.getElementById('ai-status').style.display='none';
+  document.getElementById('notes-chips').innerHTML=scannedNotes.map(n=>`<div class="note-chip">${n}</div>`).join('');
+  document.getElementById('detected-panel').style.display='block';
+}
+function resetScan(){ document.getElementById('scan-preview-img').style.display='none'; ['scan-icon','scan-text','scan-sub'].forEach(id=>document.getElementById(id).style.display='block'); document.getElementById('detected-panel').style.display='none'; document.getElementById('file-input').value=''; scannedNotes=[]; }
+function saveToLibrary(){
+  if(!scannedNotes.length) return;
+  library.push({id:Date.now(),name:'Sheet '+new Date().toLocaleDateString(),notes:scannedNotes,noteCount:scannedNotes.length,date:new Date().toISOString(),bestTime:null});
+  localStorage.setItem('nr_lib',JSON.stringify(library)); alert('Saved!'); resetScan(); showScreen('screen-library');
+}
+function renderLibrary(){
+  library=JSON.parse(localStorage.getItem('nr_lib')||'[]');
+  const body=document.getElementById('library-body');
+  if(!library.length){ body.innerHTML='<div class="lib-empty"><div class="le-icon">📚</div><p>No practice sets yet.<br>Scan sheet music to create custom practice sets!</p></div>'; return; }
+  body.innerHTML=library.map(e=>`<div class="lib-card" onclick="practiceEntry(${e.id})"><div class="lib-thumb">🎼</div><div class="lib-info"><h3>${e.name}</h3><p>${e.noteCount} notes · ${new Date(e.date).toLocaleDateString()}</p></div><div class="lib-badge">${e.bestTime?e.bestTime+'s':'New'}</div></div>`).join('');
+}
+function practiceEntry(id){ const e=library.find(x=>x.id===id); if(!e) return; LEVEL_SETS.custom=e.notes; startGame('custom'); }
 </script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('sw.js').then(r=>console.log('SW registered')).catch(e=>console.log('SW failed',e));
+    navigator.serviceWorker.register('sw.js')
+      .then(()=>console.log('NoteRead SW registered'))
+      .catch(e=>console.warn('SW registration failed',e));
   });
 }
 </script>
